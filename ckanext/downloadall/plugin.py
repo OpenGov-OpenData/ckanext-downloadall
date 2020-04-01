@@ -58,7 +58,8 @@ class DownloadallPlugin(plugins.SingletonPlugin):
         # SO if package.json (not including Package Zip bits) remains the same
         # then we don't need to regenerate zip.
         if isinstance(entity, model.Package):
-            enqueue_update_zip(entity.name, entity.id, operation)
+            if entity.type == 'dataset':
+                enqueue_update_zip(entity.name, entity.id, operation)
         elif isinstance(entity, model.Resource):
             if entity.extras.get('downloadall_metadata_modified'):
                 # this is the zip of all the resources - no need to react to
