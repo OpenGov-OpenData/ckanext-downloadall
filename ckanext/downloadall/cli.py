@@ -61,15 +61,21 @@ def cli(ctx, config, *args, **kwargs):
 @click.option(u'--synchronous', u'-s',
               help=u'Do it in the same process (not the worker)',
               is_flag=True)
-def update_zip(dataset_ref, synchronous):
+@click.option(u'--force', u'-f',
+              help=u'Force generation of ZIP file',
+              is_flag=True)
+def update_zip(dataset_ref, synchronous, force):
     u''' update-zip <package-name>
 
     Generates zip file for a dataset, downloading its resources.'''
+    skip_if_no_changes = True
+    if force:
+        skip_if_no_changes = False
     if synchronous:
-        tasks.update_zip(dataset_ref)
+        tasks.update_zip(dataset_ref, skip_if_no_changes)
     else:
         toolkit.enqueue_job(
-            tasks.update_zip, [dataset_ref],
+            tasks.update_zip, [dataset_ref, skip_if_no_changes],
             title=u'DownloadAll {operation} "{name}" {id}'.format(
                 operation='cli-requested', name=dataset_ref,
                 id=dataset_ref),
