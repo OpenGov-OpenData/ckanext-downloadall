@@ -61,15 +61,21 @@ def cli(ctx, config, *args, **kwargs):
 @click.option(u'--synchronous', u'-s',
               help=u'Do it in the same process (not the worker)',
               is_flag=True)
-def update_zip(dataset_ref, synchronous):
+@click.option(u'--force', u'-f',
+              help=u'Force generation of ZIP file',
+              is_flag=True)
+def update_zip(dataset_ref, synchronous, force):
     u''' update-zip <package-name>
 
     Generates zip file for a dataset, downloading its resources.'''
+    skip_if_no_changes = True
+    if force:
+        skip_if_no_changes = False
     if synchronous:
-        tasks.update_zip(dataset_ref)
+        tasks.update_zip(dataset_ref, skip_if_no_changes)
     else:
         toolkit.enqueue_job(
-            tasks.update_zip, [dataset_ref],
+            tasks.update_zip, [dataset_ref, skip_if_no_changes],
             title=u'DownloadAll {operation} "{name}" {id}'.format(
                 operation='cli-requested', name=dataset_ref,
                 id=dataset_ref),
@@ -82,20 +88,26 @@ def update_zip(dataset_ref, synchronous):
 @click.option(u'--synchronous', u'-s',
               help=u'Do it in the same process (not the worker)',
               is_flag=True)
-def update_all_zips(synchronous):
+@click.option(u'--force', u'-f',
+              help=u'Force generation of ZIP file',
+              is_flag=True)
+def update_all_zips(synchronous, force):
     u''' update-all-zips <package-name>
 
     Generates zip file for all datasets. It is done synchronously.'''
     context = {'model': model, 'session': model.Session}
     datasets = toolkit.get_action('package_list')(context, {})
+    skip_if_no_changes = True
+    if force:
+        skip_if_no_changes = False
     for i, dataset_name in enumerate(datasets):
         if synchronous:
             print('Processing dataset {}/{}'.format(i + 1, len(datasets)))
-            tasks.update_zip(dataset_name)
+            tasks.update_zip(dataset_name, skip_if_no_changes)
         else:
             print('Queuing dataset {}/{}'.format(i + 1, len(datasets)))
             toolkit.enqueue_job(
-                tasks.update_zip, [dataset_name],
+                tasks.update_zip, [dataset_name, skip_if_no_changes],
                 title=u'DownloadAll {operation} "{name}" {id}'.format(
                     operation='cli-requested', name=dataset_name,
                     id=dataset_name),
