@@ -1,4 +1,5 @@
 import re
+import logging
 
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
@@ -7,12 +8,12 @@ from ckan.lib.plugins import DefaultTranslation
 
 from ckan import model
 
-from tasks import update_zip
-import helpers
-import action
+from ckanext.downloadall.tasks import update_zip
+from ckanext.downloadall import helpers
+from ckanext.downloadall import action
+from ckanext.downloadall.cli import cli
 
-
-log = __import__('logging').getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 class DownloadallPlugin(plugins.SingletonPlugin, DefaultTranslation):
@@ -22,9 +23,13 @@ class DownloadallPlugin(plugins.SingletonPlugin, DefaultTranslation):
     plugins.implements(plugins.ITemplateHelpers)
     plugins.implements(plugins.IPackageController, inherit=True)
     plugins.implements(plugins.IActions)
+    plugins.implements(plugins.IClick)
+
+    # IClick
+    def get_commands(self):
+        return [cli]
 
     # IConfigurer
-
     def update_config(self, config_):
         toolkit.add_template_directory(config_, 'templates')
         toolkit.add_public_directory(config_, 'public')

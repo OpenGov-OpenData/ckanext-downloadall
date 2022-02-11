@@ -1,4 +1,4 @@
-import __builtin__ as builtins
+import builtins
 import zipfile
 import json
 import tempfile

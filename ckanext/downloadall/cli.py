@@ -4,56 +4,23 @@ import click
 
 try:
     # CKAN 2.9+
-    from ckan.cli import (
-        click_config_option, load_config
-    )
+    from ckan.cli import load_config
 except ImportError:
     # CKAN 2.7, 2.8
-    from ckan.lib.cli import click_config_option
-    from ckan.lib.cli import _get_config as load_config
+    from ckan.lib.cli import _get_config as load_config, CkanCommand
 
-from ckan.config.middleware import make_app
 import ckan.plugins.toolkit as toolkit
 from ckan import model
 from ckan.lib.jobs import DEFAULT_QUEUE_NAME
 
-import tasks
+from ckanext.downloadall import tasks
 
 
-class MockTranslator(object):
-    def gettext(self, value):
-        return value
-
-    def ugettext(self, value):
-        return value
-
-    def ungettext(self, singular, plural, n):
-        if n > 1:
-            return plural
-        return singular
-
-
-class CkanCommand(object):
-
-    def __init__(self, conf=None):
-        self.config = load_config(conf)
-
-        # package_update needs a translator defined i.e. _()
-        from paste.registry import Registry
-        import pylons
-        registry = Registry()
-        registry.prepare()
-        registry.register(pylons.translator, MockTranslator())
-
-        self.app = make_app(self.config.global_conf, **self.config.local_conf)
-
-
-@click.group()
+@click.group(name='downloadall')
 @click.help_option(u'-h', u'--help')
-@click_config_option
 @click.pass_context
-def cli(ctx, config, *args, **kwargs):
-    ctx.obj = CkanCommand(config)
+def cli(ctx):
+    pass
 
 
 @cli.command(u'update-zip', short_help=u'Update zip file for a dataset')

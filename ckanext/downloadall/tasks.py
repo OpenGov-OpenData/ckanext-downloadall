@@ -4,6 +4,7 @@ import os
 import hashlib
 import math
 import copy
+import logging
 
 import requests
 import six
@@ -14,7 +15,7 @@ from ckan import model
 from ckan.plugins.toolkit import get_action, config
 
 
-log = __import__('logging').getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def update_zip(package_id, skip_if_no_changes=True):
