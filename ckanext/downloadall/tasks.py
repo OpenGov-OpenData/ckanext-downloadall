@@ -45,7 +45,7 @@ def update_zip(package_id, skip_if_no_changes=True):
                  'changed sufficiently: {}'.format(dataset['name']))
         return
 
-    prefix = "{}-".format(dataset[u'name'])
+    prefix = '{}-'.format(dataset['name'])
     with tempfile.NamedTemporaryFile(prefix=prefix, suffix='.zip') as fp:
         write_zip(fp, datapackage, ckan_and_datapackage_resources)
 
@@ -56,8 +56,8 @@ def update_zip(package_id, skip_if_no_changes=True):
             package_id=dataset['id'],
             url='dummy-value',
             upload=fp,
-            name=u'All resource data',
-            format=u'ZIP',
+            name='All resource data',
+            format='ZIP',
             downloadall_metadata_modified=dataset['metadata_modified'],
             downloadall_datapackage_hash=hash_datapackage(datapackage)
         )
@@ -96,7 +96,7 @@ def hash_datapackage(datapackage):
     (metadata).
     '''
     canonized = canonized_datapackage(datapackage)
-    m = hashlib.md5(six.text_type(make_hashable(canonized)).encode('utf8'))
+    m = hashlib.sha224(six.text_type(make_hashable(canonized)).encode('utf8'))
     return m.hexdigest()
 
 
@@ -174,8 +174,7 @@ def generate_datapackage_json(package_id):
 
     # add in any other dataset fields, if configured
     fields_to_include = config.get(
-        u'ckanext.downloadall.dataset_fields_to_add_to_datapackage',
-        u'').split()
+        'ckanext.downloadall.dataset_fields_to_add_to_datapackage', '').split()
     for key in fields_to_include:
         datapackage[key] = dataset.get(key)
 
@@ -255,7 +254,7 @@ def download_resource_into_zip(url, filename, zipf):
                   .format(url=url, error=str(e)))
         raise DownloadError()
 
-    hash_object = hashlib.md5()
+    hash_object = hashlib.sha224()
     size = 0
     try:
         # python3 syntax - stream straight into the zip
@@ -289,8 +288,8 @@ def write_datapackage_json(datapackage, zipf):
 
 def format_bytes(size_bytes):
     if size_bytes == 0:
-        return "0 bytes"
-    size_name = ("bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+        return '0 bytes'
+    size_name = ('bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB')
     i = int(math.floor(math.log(size_bytes, 1024)))
     p = math.pow(1024, i)
     s = round(size_bytes / p, 1)
