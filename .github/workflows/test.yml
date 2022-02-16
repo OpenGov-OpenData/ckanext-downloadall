@@ -68,5 +68,5 @@ jobs:
       run: |
         paster --plugin=ckan db init -c test.ini
     - name: Run tests
-      run: pytest --verbose --ckan-ini=test.ini --cov=ckanext.downloadall --cov-fail-under=25 --disable-warnings ckanext/downloadall/tests
+      run: pytest --ckan-ini=test.ini --cov=ckanext.downloadall --cov-fail-under=25 --disable-warnings --showlocals -vvv ckanext/downloadall/tests
 

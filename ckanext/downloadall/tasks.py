@@ -166,6 +166,8 @@ def generate_datapackage_json(package_id):
     # dictionary
     ckan_and_datapackage_resources = zip(resources_to_include,
                                          datapackage.get('resources', []))
+    # this line is only for backward compatibility with py2 style of zip function
+    ckan_and_datapackage_resources = [a for a in ckan_and_datapackage_resources]
     for res, datapackage_res in ckan_and_datapackage_resources:
         ckanapi.datapackage.populate_datastore_res_fields(
             ckan=local_ckan, res=res)

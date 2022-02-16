@@ -74,7 +74,7 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru('http://127.0.0.1:8983/solr')
-        dataset = factories.Dataset(resources=[{
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -118,7 +118,7 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru('http://127.0.0.1:8983/solr')
-        dataset = factories.Dataset(resources=[{
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -163,7 +163,7 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru('http://127.0.0.1:8983/solr')
-        dataset = factories.Dataset(resources=[{
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -183,7 +183,7 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru('http://127.0.0.1:8983/solr')
-        dataset = factories.Dataset(resources=[{
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -519,23 +519,21 @@ class TestHashDataPackage(object):
     def test_repeatability(self):
         # value of the hash shouldn't change between machines or python
         # versions etc
-        assert hash_datapackage({'resources': []}) == '60482792d5032e490cdde4f759e84fd6'
+        assert hash_datapackage({'resources': []}) == '25335c0285e0cfdeb66a0b3f0cfe7a242cb0f084682704bc1fafbc72'
 
     def test_dict_ordering(self):
         assert hash_datapackage({'resources': [{'format': 'CSV', 'name': 'a'}]}) == hash_datapackage(
             {'resources': [{'name': 'a', 'format': 'CSV'}]})
 
 
-class TestGenerateDatapackageJson(object):
-    @classmethod
-    def setupClass(cls):
-        helpers.reset_db()
-
+class TestGenerateDatapackageJson(TestBase):
     def test_simple(self):
-        dataset = factories.Dataset(resources=[{
-            'url': 'https://example.com/data.csv',
-            'format': 'csv',
-            }])
+        dataset = factories.Dataset(
+            owner_org=self.org['id'],
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv',
+                }])
 
         datapackage, ckan_and_datapackage_resources, existing_zip_resource = generate_datapackage_json(dataset['id'])
 
@@ -550,7 +548,7 @@ class TestGenerateDatapackageJson(object):
             'title': 'Test Dataset'
             }
         assert ckan_and_datapackage_resources[0][0]['url'] == 'https://example.com/data.csv'
-        assert ckan_and_datapackage_resources[0][0]['description'] == ''
+        assert not ckan_and_datapackage_resources[0][0]['description']
         assert ckan_and_datapackage_resources[0][1] == {
             'format': 'CSV',
             'name': '<SOME-UUID>',
@@ -559,11 +557,12 @@ class TestGenerateDatapackageJson(object):
         assert existing_zip_resource is None
 
     def test_extras(self):
-        dataset = factories.Dataset(extras=[
-            {'key': 'extra1', 'value': '1'},
-            {'key': 'extra2', 'value': '2'},
-            {'key': 'extra3', 'value': '3'},
-        ])
+        dataset = factories.Dataset(
+            owner_org=self.org['id'], extras=[
+                {'key': 'extra1', 'value': '1'},
+                {'key': 'extra2', 'value': '2'},
+                {'key': 'extra3', 'value': '3'},
+            ])
 
         datapackage, _, __ = \
             generate_datapackage_json(dataset['id'])
@@ -580,7 +579,7 @@ class TestGenerateDatapackageJson(object):
         'ckanext.downloadall.dataset_fields_to_add_to_datapackage',
         'num_resources type')
     def test_added_fields(self):
-        dataset = factories.Dataset()
+        dataset = factories.Dataset(owner_org=self.org['id'])
 
         datapackage, _, __ = \
             generate_datapackage_json(dataset['id'])

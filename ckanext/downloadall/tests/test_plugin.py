@@ -6,13 +6,13 @@ from ckanext.downloadall.tests import TestBase
 
 class TestNotify(TestBase):
     def test_new_resource_leads_to_queued_task(self):
-        dataset = factories.Dataset(resources=[
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[
             {'url': 'http://some.image.png', 'format': 'png'}])
         assert [job['title'] for job in helpers.call_action('job_list')] == [
             'DownloadAll new "{}" {}'.format(dataset['name'], dataset['id'])]
 
     def test_changed_resource_leads_to_queued_task(self):
-        dataset = factories.Dataset(resources=[
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[
             {'url': 'http://some.image.png', 'format': 'png'}])
         helpers.call_action('job_clear')
 
@@ -23,7 +23,7 @@ class TestNotify(TestBase):
             'DownloadAll changed "{}" {}'.format(dataset['name'], dataset['id'])]
 
     def test_deleted_resource_leads_to_queued_task(self):
-        dataset = factories.Dataset(resources=[
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[
             {'url': 'http://some.image.png', 'format': 'png'}])
         helpers.call_action('job_clear')
 
@@ -35,6 +35,7 @@ class TestNotify(TestBase):
 
     def test_created_dataset_leads_to_queued_task(self):
         dataset = {'name': 'testdataset_da',
+                   'owner_org': self.org['id'],
                    'title': 'Test Dataset',
                    'notes': 'Just another test dataset.',
                    'resources': [
@@ -47,7 +48,7 @@ class TestNotify(TestBase):
             'DownloadAll new "{}" {}'.format(dataset['name'], dataset['id'])]
 
     def test_changed_dataset_leads_to_queued_task(self):
-        dataset = factories.Dataset(resources=[
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[
             {'url': 'http://some.image.png', 'format': 'png'}])
         helpers.call_action('job_clear')
 
@@ -61,7 +62,7 @@ class TestNotify(TestBase):
     def test_creation_of_zip_resource_leads_to_queued_task(self):
         # but we don't get an infinite loop because it is stopped by the
         # skip_if_no_changes
-        dataset = factories.Dataset(resources=[
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[
             {'url': 'http://some.image.png', 'format': 'png'}])
         helpers.call_action('job_clear')
         resource = {

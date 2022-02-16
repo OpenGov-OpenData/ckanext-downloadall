@@ -5,11 +5,13 @@ from ckan.tests import helpers
 from ckanext.downloadall.tests import TestBase
 
 
+@pytest.mark.usefixtures('clean_db', 'with_plugins', 'with_request_context')
 @pytest.mark.ckan_config('ckan.plugins', 'datastore downloadall')
 class TestDatastoreCreate(TestBase):
     def test_datastore_create(self):
-        dataset = factories.Dataset(resources=[
-            {'url': 'http://some.image.png', 'format': 'png'}])
+        dataset = factories.Dataset(
+            owner_org=self.org['id'],
+            resources=[{'url': 'http://some.image.png', 'format': 'png'}])
         helpers.call_action('job_clear')
 
         helpers.call_action('datastore_create',
@@ -17,5 +19,5 @@ class TestDatastoreCreate(TestBase):
                             force=True)
 
         # Check the chained action caused the zip to be queued for update
-        assert [job['title'] for job in helpers.call_action(' job_list')] == [
+        assert [job['title'] for job in helpers.call_action('job_list')] == [
             'DownloadAll datastore_create "{}" {}'.format(dataset['name'], dataset['id'])]
