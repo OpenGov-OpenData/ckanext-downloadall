@@ -15,8 +15,7 @@ from ckan.tests import factories, helpers
 import ckan.lib.uploader
 from ckanext.downloadall.tasks import (
     update_zip, canonized_datapackage, save_local_path_in_datapackage_resource,
-    hash_datapackage, generate_datapackage_json)
-import ckanapi
+    hash_datapackage, generate_datapackage_json, populate_schema_from_datastore)
 from ckanext.downloadall.tests import TestBase
 
 
@@ -35,37 +34,21 @@ def mock_open_if_open_fails(*args, **kwargs):
         return fake_open(*args, **kwargs)
 
 
-def mock_populate_datastore_res_fields(ckan, res):
+def mock_populate_schema_from_datastore(res, datapackage_res):
     res['datastore_fields'] = [{'type': 'int', 'id': '_id'},
                                {'type': 'text', 'id': 'Date'},
                                {'type': 'text', 'id': 'Price'}]
+    populate_schema_from_datastore(res, datapackage_res)
 
 
-def mock_populate_datastore_res_fields_overridden(ckan, res):
-    res['datastore_fields'] = [
-        {'type': 'int', 'id': '_id'},
-        {
-            'type': 'timestamp',
-            'id': 'Date',
-            'info': {
-                'notes': 'Some description here!',
-                'type_override': 'timestamp',
-                'label': 'The Date'
-            },
-        },
-        {
-            'type': 'numeric',
-            'id': 'Price',
-            'info': {'notes': '', 'type_override': '', 'label': ''},
-        }
-    ]
-
-
+@pytest.mark.ckan_config('ckan.plugins', 'datastore downloadall')
 @mock.patch.object(ckan.lib.uploader, 'os', fake_os)
 @mock.patch.object(builtins, 'open', side_effect=mock_open_if_open_fails)
-@mock.patch.object(ckan.lib.uploader, '_storage_path', new='/doesnt_exist')
 class TestUpdateZip(TestBase):
+    solr_url = 'http://solr:8983/solr'
+
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
+    @pytest.mark.usefixtures('with_request_context')
     @responses.activate
     def test_simple(self, _):
         responses.add(
@@ -73,7 +56,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru('http://127.0.0.1:8983/solr')
+        responses.add_passthru(self.solr_url)
         dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
@@ -94,20 +77,18 @@ class TestUpdateZip(TestBase):
         with fake_open(filepath, 'rb') as f:
             with zipfile.ZipFile(f) as zip_:
                 assert zip_.namelist() == [csv_filename_in_zip, 'datapackage.json']
-                assert zip_.read(csv_filename_in_zip) == 'a,b,c'
-                datapackage_json = zip_.read('datapackage.json')
-                assert datapackage_json.startswith('{\n  "description"')
+                assert zip_.read(csv_filename_in_zip) == 'a,b,c'.encode()
+                datapackage_json = zip_.read('datapackage.json').decode()
+                assert '{\n  "description"' in datapackage_json
                 datapackage = json.loads(datapackage_json)
                 assert datapackage['name'][:12] == 'test_dataset'
                 assert datapackage['title'] == 'Test Dataset'
                 assert datapackage['description'] == 'Just another test dataset.'
-                assert datapackage['resources'] == [{
-                    'format': 'CSV',
-                    'name': dataset['resources'][0]['id'],
-                    'path': csv_filename_in_zip,
-                    'sources': [{'path': 'https://example.com/data.csv',
-                                 'title': None}],
-                    }]
+                assert datapackage['resources'][0]['format'] == 'CSV'
+                assert datapackage['resources'][0]['name'] == dataset['resources'][0]['id']
+                assert datapackage['resources'][0]['path'] == csv_filename_in_zip
+                assert datapackage['resources'][0]['sources'] == [{'path': 'https://example.com/data.csv',
+                                                                   'title': None}]
 
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate
@@ -117,7 +98,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru('http://127.0.0.1:8983/solr')
+        responses.add_passthru(self.solr_url)
         dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
@@ -141,8 +122,8 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru('http://127.0.0.1:8983/solr')
-        dataset = factories.Dataset(resources=[{
+        responses.add_passthru(self.solr_url)
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -162,7 +143,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru('http://127.0.0.1:8983/solr')
+        responses.add_passthru(self.solr_url)
         dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
@@ -182,7 +163,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru('http://127.0.0.1:8983/solr')
+        responses.add_passthru(self.solr_url)
         dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
@@ -204,8 +185,8 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru('http://127.0.0.1:8983/solr')
-        dataset = factories.Dataset(resources=[{
+        responses.add_passthru(self.solr_url)
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -221,27 +202,32 @@ class TestUpdateZip(TestBase):
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate
     def test_uploaded_resource(self, _):
-        responses.add_passthru('http://127.0.0.1:8983/solr')
+        responses.add_passthru(self.solr_url)
         csv_content = 'Test,csv'
         responses.add(
             responses.GET,
             re.compile(r'http://test.ckan.net/dataset/.*/download/.*'),
             body=csv_content
         )
-        dataset = factories.Dataset()
+        dataset = factories.Dataset(owner_org=self.org['id'])
         # add a resource which is an uploaded file
         with tempfile.NamedTemporaryFile() as fp:
-            fp.write(csv_content)
+            fp.write(csv_content.encode())
             fp.seek(0)
-            registry = ckanapi.LocalCKAN()
+            # registry = ckanapi.LocalCKAN()
             resource = dict(
-                package_id=dataset['id'],
-                url='dummy-value',
+                package_id=dataset[u'id'],
+                url='http://test.ckan.net/dataset/1/download/1',
                 upload=fp,
                 name='Rainfall',
                 format='CSV'
             )
-            registry.action.resource_create(**resource)
+            user = helpers.call_action('get_site_user', {'ignore_auth': True})
+            ctx = dict()
+            ctx['user'] = user['name']
+            helpers.call_action('resource_create', context=ctx, **resource)
+
+            # registry.action.resource_create(**resource)
 
         update_zip(dataset['id'])
 
@@ -256,7 +242,7 @@ class TestUpdateZip(TestBase):
             with zipfile.ZipFile(f) as zip_:
                 # Check uploaded file
                 assert zip_.namelist() == [csv_filename_in_zip, 'datapackage.json']
-                assert zip_.read(csv_filename_in_zip) == 'Test,csv'
+                assert zip_.read(csv_filename_in_zip) == 'Test,csv'.encode()
                 # Check datapackage.json
                 datapackage_json = zip_.read('datapackage.json')
                 datapackage = json.loads(datapackage_json)
@@ -269,8 +255,8 @@ class TestUpdateZip(TestBase):
                     'title': 'Rainfall',
                     }]
 
-    @mock.patch('ckanapi.datapackage.populate_datastore_res_fields',
-                side_effect=mock_populate_datastore_res_fields)
+    @mock.patch('ckanext.downloadall.tasks.populate_schema_from_datastore',
+                side_effect=mock_populate_schema_from_datastore)
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate
     def test_data_dictionary(self, _, __):
@@ -279,8 +265,8 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='Date,Price\n1/6/2017,4.00\n2/6/2017,4.12'
         )
-        responses.add_passthru('http://127.0.0.1:8983/solr')
-        dataset = factories.Dataset(resources=[{
+        responses.add_passthru(self.solr_url)
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -300,7 +286,7 @@ class TestUpdateZip(TestBase):
         with fake_open(filepath, 'rb') as f:
             with zipfile.ZipFile(f) as zip_:
                 assert zip_.namelist() == [csv_filename_in_zip, 'datapackage.json']
-                datapackage_json = zip_.read('datapackage.json')
+                datapackage_json = zip_.read('datapackage.json').decode()
                 assert datapackage_json.startswith('{\n  "description"')
                 datapackage = json.loads(datapackage_json)
                 assert datapackage['resources'][0]['schema'] == {
@@ -310,13 +296,13 @@ class TestUpdateZip(TestBase):
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate
     def test_resource_url_with_connection_error(self, _):
-        responses.add_passthru('http://127.0.0.1:8983/solr')
+        responses.add_passthru(self.solr_url)
         responses.add(
             responses.GET,
             'https://example.com/data.csv',
             body=requests.ConnectionError('Some network trouble...')
         )
-        dataset = factories.Dataset(resources=[{
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'name': 'rainfall',
             'format': 'csv',
@@ -348,13 +334,13 @@ class TestUpdateZip(TestBase):
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate
     def test_resource_url_with_404_error(self, _):
-        responses.add_passthru('http://127.0.0.1:8983/solr')
+        responses.add_passthru(self.solr_url)
         responses.add(
             responses.GET,
             'https://example.com/data.csv',
             status=404
         )
-        dataset = factories.Dataset(resources=[{
+        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'name': 'rainfall',
             'format': 'csv',

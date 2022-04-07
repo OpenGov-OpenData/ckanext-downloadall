@@ -36,7 +36,6 @@ class DownloadallPlugin(plugins.SingletonPlugin, DefaultTranslation):
         toolkit.add_resource('fanstatic', 'downloadall')
 
     # IDomainObjectModification
-
     def notify(self, entity, operation):
         '''
         Send a notification on entity modification.
@@ -47,8 +46,7 @@ class DownloadallPlugin(plugins.SingletonPlugin, DefaultTranslation):
         if operation == 'deleted':
             return
 
-        log.debug('{} {} \'{}\''
-                  .format(operation, type(entity).__name__, entity.name))
+        log.debug('{} {} \'{}\''.format(operation, type(entity).__name__, entity.name))
         # We should regenerate zip if these happen:
         # 1 change of title, description etc (goes into package.json)
         # 2 add/change/delete resource metadata
@@ -80,14 +78,12 @@ class DownloadallPlugin(plugins.SingletonPlugin, DefaultTranslation):
             return
 
     # ITemplateHelpers
-
     def get_helpers(self):
         return {
             'downloadall__pop_zip_resource': helpers.pop_zip_resource,
         }
 
     # IPackageController
-
     def before_index(self, pkg_dict):
         try:
             if 'All resource data' in pkg_dict['res_name']:
@@ -101,7 +97,6 @@ class DownloadallPlugin(plugins.SingletonPlugin, DefaultTranslation):
         return pkg_dict
 
     # IActions
-
     def get_actions(self):
         actions = {}
         if plugins.get_plugin('datastore'):
