@@ -11,6 +11,7 @@ from pyfakefs import fake_filesystem
 import responses
 import requests
 
+from ckan.common import config
 from ckan.tests import factories, helpers
 import ckan.lib.uploader
 from ckanext.downloadall.tasks import (
@@ -45,7 +46,6 @@ def mock_populate_schema_from_datastore(res, datapackage_res):
 @mock.patch.object(ckan.lib.uploader, 'os', fake_os)
 @mock.patch.object(builtins, 'open', side_effect=mock_open_if_open_fails)
 class TestUpdateZip(TestBase):
-    solr_url = 'http://solr:8983/solr'
 
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @pytest.mark.usefixtures('with_request_context')
@@ -56,7 +56,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru(self.solr_url)
+        responses.add_passthru(config['solr_url'])
         dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
@@ -98,7 +98,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru(self.solr_url)
+        responses.add_passthru(config['solr_url'])
         dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
@@ -122,7 +122,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru(self.solr_url)
+        responses.add_passthru(config['solr_url'])
         dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
@@ -143,7 +143,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru(self.solr_url)
+        responses.add_passthru(config['solr_url'])
         dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
@@ -163,7 +163,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru(self.solr_url)
+        responses.add_passthru(config['solr_url'])
         dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
@@ -185,7 +185,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='a,b,c'
         )
-        responses.add_passthru(self.solr_url)
+        responses.add_passthru(config['solr_url'])
         dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
@@ -202,7 +202,7 @@ class TestUpdateZip(TestBase):
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate
     def test_uploaded_resource(self, _):
-        responses.add_passthru(self.solr_url)
+        responses.add_passthru(config['solr_url'])
         csv_content = 'Test,csv'
         responses.add(
             responses.GET,
@@ -265,7 +265,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body='Date,Price\n1/6/2017,4.00\n2/6/2017,4.12'
         )
-        responses.add_passthru(self.solr_url)
+        responses.add_passthru(config['solr_url'])
         dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
@@ -296,7 +296,7 @@ class TestUpdateZip(TestBase):
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate
     def test_resource_url_with_connection_error(self, _):
-        responses.add_passthru(self.solr_url)
+        responses.add_passthru(config['solr_url'])
         responses.add(
             responses.GET,
             'https://example.com/data.csv',
@@ -334,7 +334,7 @@ class TestUpdateZip(TestBase):
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate
     def test_resource_url_with_404_error(self, _):
-        responses.add_passthru(self.solr_url)
+        responses.add_passthru(config['solr_url'])
         responses.add(
             responses.GET,
             'https://example.com/data.csv',

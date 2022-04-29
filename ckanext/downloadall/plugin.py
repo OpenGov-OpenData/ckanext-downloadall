@@ -1,9 +1,9 @@
 import re
 import logging
 
-from ckan import plugins
+import ckan.plugins as plugins
+import ckan.plugins.toolkit as toolkit
 
-from ckan.plugins import toolkit
 from ckan.lib.jobs import DEFAULT_QUEUE_NAME
 from ckan.lib.plugins import DefaultTranslation
 

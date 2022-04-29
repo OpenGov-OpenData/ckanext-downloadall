@@ -1,8 +1,8 @@
-import ckan.plugins
+import ckan.plugins as p
 from ckan import model
 
 
-@ckan.plugins.toolkit.chained_action  # requires CKAN 2.7+
+@p.toolkit.chained_action  # requires CKAN 2.7+
 def datastore_create(original_action, context, data_dict):
     from ckanext.downloadall import plugin
     # This gets called when xloader or datapusher loads a new resource or
