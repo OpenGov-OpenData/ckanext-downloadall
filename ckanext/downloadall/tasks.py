@@ -4,6 +4,7 @@ import os
 import hashlib
 import math
 import copy
+import logging
 
 import requests
 import six
@@ -11,10 +12,17 @@ import ckanapi
 import ckanapi.datapackage
 
 from ckan import model
+from ckan.plugins import toolkit
 from ckan.plugins.toolkit import get_action, config
+from werkzeug.datastructures import FileStorage
 
+log = logging.getLogger(__name__)
 
-log = __import__('logging').getLogger(__name__)
+DATAPACKAGE_TYPES = {  # map datastore types to datapackage types
+    'text': 'string',
+    'numeric': 'number',
+    'timestamp': 'datetime',
+}
 
 
 def update_zip(package_id, skip_if_no_changes=True):
@@ -44,32 +52,34 @@ def update_zip(package_id, skip_if_no_changes=True):
                  'changed sufficiently: {}'.format(dataset['name']))
         return
 
-    prefix = "{}-".format(dataset[u'name'])
-    with tempfile.NamedTemporaryFile(prefix=prefix, suffix='.zip') as fp:
+    prefix = '{}-'.format(dataset['name'])
+    with tempfile.NamedTemporaryFile(mode='w+b', prefix=prefix, suffix='.zip') as fp:
         write_zip(fp, datapackage, ckan_and_datapackage_resources)
 
         # Upload resource to CKAN as a new/updated resource
-        local_ckan = ckanapi.LocalCKAN()
         fp.seek(0)
+        fs = FileStorage(fp, filename=fp.name, name=fp.name, content_type='zip')
         resource = dict(
             package_id=dataset['id'],
             url='dummy-value',
-            upload=fp,
-            name=u'All resource data',
-            format=u'ZIP',
+            upload=fs,
+            name='All resource data',
+            format='ZIP',
             downloadall_metadata_modified=dataset['metadata_modified'],
             downloadall_datapackage_hash=hash_datapackage(datapackage)
         )
+        user = toolkit.get_action('get_site_user')({'ignore_auth': True}, ())
+        ctx = context.copy()
+        ctx['user'] = user['name']
 
         if not existing_zip_resource:
             log.debug('Writing new zip resource - {}'.format(dataset['name']))
-            local_ckan.action.resource_create(**resource)
+            toolkit.get_action('resource_create')(ctx, resource)
         else:
             # TODO update the existing zip resource (using patch?)
             log.debug('Updating zip resource - {}'.format(dataset['name']))
-            local_ckan.action.resource_patch(
-                id=existing_zip_resource['id'],
-                **resource)
+            resource['id'] = existing_zip_resource['id']
+            toolkit.get_action('resource_patch')(ctx, resource)
 
 
 class DownloadError(Exception):
@@ -95,7 +105,7 @@ def hash_datapackage(datapackage):
     (metadata).
     '''
     canonized = canonized_datapackage(datapackage)
-    m = hashlib.md5(six.text_type(make_hashable(canonized)).encode('utf8'))
+    m = hashlib.sha224(six.text_type(make_hashable(canonized)).encode('utf8'))
     return m.hexdigest()
 
 
@@ -148,12 +158,10 @@ def generate_datapackage_json(package_id):
     datapackage.json.
     '''
     context = {'model': model, 'session': model.Session}
-    dataset = get_action('package_show')(
-        context, {'id': package_id})
+    dataset = get_action('package_show')(context, {'id': package_id})
 
     # filter out resources that are not suitable for inclusion in the data
     # package
-    local_ckan = ckanapi.LocalCKAN()
     dataset, resources_to_include, existing_zip_resource = \
         remove_resources_that_should_not_be_included_in_the_datapackage(
             dataset)
@@ -165,21 +173,48 @@ def generate_datapackage_json(package_id):
     # dictionary
     ckan_and_datapackage_resources = zip(resources_to_include,
                                          datapackage.get('resources', []))
+    # this line is only for backward compatibility with py2 style of zip function
+    ckan_and_datapackage_resources = [a for a in ckan_and_datapackage_resources]
     for res, datapackage_res in ckan_and_datapackage_resources:
-        ckanapi.datapackage.populate_datastore_res_fields(
-            ckan=local_ckan, res=res)
-        ckanapi.datapackage.populate_schema_from_datastore(
-            cres=res, dres=datapackage_res)
+        data = {
+            'resource_id': res['id'],
+            'limit': 1,
+            'include_total': True,
+        }
+        if res.get('datastore_active'):
+            ds = toolkit.get_action('datastore_search')(context, data)
+            res['datastore_fields'] = ds['fields']
+
+        populate_schema_from_datastore(res, datapackage_res)
 
     # add in any other dataset fields, if configured
     fields_to_include = config.get(
-        u'ckanext.downloadall.dataset_fields_to_add_to_datapackage',
-        u'').split()
+        'ckanext.downloadall.dataset_fields_to_add_to_datapackage', '').split()
     for key in fields_to_include:
         datapackage[key] = dataset.get(key)
 
-    return (datapackage, ckan_and_datapackage_resources,
-            existing_zip_resource)
+    return datapackage, ckan_and_datapackage_resources, existing_zip_resource
+
+
+def populate_schema_from_datastore(res, datapackage_res):
+    # convert datastore data dictionary to datapackage schema
+    if 'schema' not in datapackage_res and 'datastore_fields' in res:
+        fields = []
+        for f in res['datastore_fields']:
+            if f['id'] == '_id':
+                continue
+            df = {'name': f['id']}
+            dtyp = DATAPACKAGE_TYPES.get(f['type'])
+            if dtyp:
+                df['type'] = dtyp
+            dtit = f.get('info', {}).get('label', '')
+            if dtit:
+                df['title'] = dtit
+            ddesc = f.get('info', {}).get('notes', '')
+            if ddesc:
+                df['description'] = ddesc
+            fields.append(df)
+        datapackage_res['schema'] = {'fields': fields}
 
 
 def write_zip(fp, datapackage, ckan_and_datapackage_resources):
@@ -188,17 +223,14 @@ def write_zip(fp, datapackage, ckan_and_datapackage_resources):
 
     :param fp: Open file that the zip can be written to
     '''
-    with zipfile.ZipFile(fp, 'w', zipfile.ZIP_DEFLATED, allowZip64=True) \
-            as zipf:
+    with zipfile.ZipFile(fp, 'w', zipfile.ZIP_DEFLATED, allowZip64=True) as zipf:
         i = 0
         for res, dres in ckan_and_datapackage_resources:
             i += 1
 
             log.debug('Downloading resource {}/{}: {}'
-                      .format(i, len(ckan_and_datapackage_resources),
-                              res['url']))
-            filename = \
-                ckanapi.datapackage.resource_filename(dres)
+                      .format(i, len(ckan_and_datapackage_resources), res['url']))
+            filename = ckanapi.datapackage.resource_filename(dres)
             try:
                 download_resource_into_zip(res['url'], filename, zipf)
             except DownloadError:
@@ -254,11 +286,11 @@ def download_resource_into_zip(url, filename, zipf):
                   .format(url=url, error=str(e)))
         raise DownloadError()
 
-    hash_object = hashlib.md5()
+    hash_object = hashlib.sha224()
     size = 0
     try:
         # python3 syntax - stream straight into the zip
-        with zipf.open(filename, 'wb') as zf:
+        with zipf.open(filename, 'w') as zf:
             for chunk in r.iter_content(chunk_size=128):
                 zf.write(chunk)
                 hash_object.update(chunk)
@@ -288,8 +320,8 @@ def write_datapackage_json(datapackage, zipf):
 
 def format_bytes(size_bytes):
     if size_bytes == 0:
-        return "0 bytes"
-    size_name = ("bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+        return '0 bytes'
+    size_name = ('bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB')
     i = int(math.floor(math.log(size_bytes, 1024)))
     p = math.pow(1024, i)
     s = round(size_bytes / p, 1)
@@ -301,17 +333,17 @@ def remove_resources_that_should_not_be_included_in_the_datapackage(dataset):
 
     existing_zip_resource = None
     resources_to_include = []
-    for i, res in enumerate(dataset['resources']):
+    for i, res in enumerate(dataset.get('resources', [])):
         if res.get('downloadall_metadata_modified'):
             # this is an existing zip of all the other resources
             log.debug('Resource resource {}/{} skipped - is the zip itself'
-                      .format(i + 1, len(dataset['resources'])))
+                      .format(i + 1, len(dataset.get('resources', []))))
             existing_zip_resource = res
             continue
 
         if res['format'] in resource_formats_to_ignore:
             log.debug('Resource resource {}/{} skipped - because it is '
-                      'format {}'.format(i + 1, len(dataset['resources']),
+                      'format {}'.format(i + 1, len(dataset.get('resources', [])),
                                          res['format']))
             continue
         resources_to_include.append(res)

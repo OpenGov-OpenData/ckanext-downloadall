@@ -72,13 +72,10 @@ Requirements
 =============== =============
 CKAN version    Compatibility
 =============== =============
-2.6 and earlier don't know
-2.7             yes
-2.8             yes
-2.9             no - needs updating
+2.9             yes
 =============== =============
 
-Designed to work with CKAN 2.7+
+Designed to work with CKAN 2.9
 
 Ideally it is used in conjunction with DataStore and
 `xloader <https://github.com/ckan/ckanext-xloader>`_ (or datapusher), so that the

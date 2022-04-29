@@ -1,18 +1,19 @@
 import re
+import logging
 
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
+
 from ckan.lib.jobs import DEFAULT_QUEUE_NAME
 from ckan.lib.plugins import DefaultTranslation
 
 from ckan import model
 
-from tasks import update_zip
-import helpers
-import action
+from ckanext.downloadall import helpers, action
+from ckanext.downloadall.cli import cli
+from ckanext.downloadall.tasks import update_zip
 
-
-log = __import__('logging').getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 class DownloadallPlugin(plugins.SingletonPlugin, DefaultTranslation):
@@ -22,18 +23,21 @@ class DownloadallPlugin(plugins.SingletonPlugin, DefaultTranslation):
     plugins.implements(plugins.ITemplateHelpers)
     plugins.implements(plugins.IPackageController, inherit=True)
     plugins.implements(plugins.IActions)
+    plugins.implements(plugins.IClick)
+
+    # IClick
+    def get_commands(self):
+        return [cli]
 
     # IConfigurer
-
     def update_config(self, config_):
         toolkit.add_template_directory(config_, 'templates')
         toolkit.add_public_directory(config_, 'public')
         toolkit.add_resource('fanstatic', 'downloadall')
 
     # IDomainObjectModification
-
     def notify(self, entity, operation):
-        u'''
+        '''
         Send a notification on entity modification.
 
         :param entity: instance of module.Package.
@@ -42,8 +46,7 @@ class DownloadallPlugin(plugins.SingletonPlugin, DefaultTranslation):
         if operation == 'deleted':
             return
 
-        log.debug(u'{} {} \'{}\''
-                  .format(operation, type(entity).__name__, entity.name))
+        log.debug('{} {} \'{}\''.format(operation, type(entity).__name__, entity.name))
         # We should regenerate zip if these happen:
         # 1 change of title, description etc (goes into package.json)
         # 2 add/change/delete resource metadata
@@ -75,17 +78,15 @@ class DownloadallPlugin(plugins.SingletonPlugin, DefaultTranslation):
             return
 
     # ITemplateHelpers
-
     def get_helpers(self):
         return {
             'downloadall__pop_zip_resource': helpers.pop_zip_resource,
         }
 
     # IPackageController
-
     def before_index(self, pkg_dict):
         try:
-            if u'All resource data' in pkg_dict['res_name']:
+            if 'All resource data' in pkg_dict['res_name']:
                 # we've got a 'Download all zip', so remove it's ZIP from the
                 # SOLR facet of resource formats, as it's not really a data
                 # resource
@@ -96,7 +97,6 @@ class DownloadallPlugin(plugins.SingletonPlugin, DefaultTranslation):
         return pkg_dict
 
     # IActions
-
     def get_actions(self):
         actions = {}
         if plugins.get_plugin('datastore'):
@@ -116,7 +116,7 @@ def enqueue_update_zip(dataset_name, dataset_id, operation):
             if not job['title']:
                 continue
             match = re.match(
-                r'DownloadAll \w+ "[^"]*" ([\w-]+)', job[u'title'])
+                r'DownloadAll \w+ "[^"]*" ([\w-]+)', job['title'])
             if match:
                 queued_dataset_id = match.groups()[0]
                 if dataset_id == queued_dataset_id:
@@ -125,11 +125,9 @@ def enqueue_update_zip(dataset_name, dataset_id, operation):
                     return
 
     # add this dataset to the queue
-    log.debug(u'Queuing job update_zip: {} {}'
-              .format(operation, dataset_name))
+    log.debug('Queuing job update_zip: {} {}' .format(operation, dataset_name))
 
     toolkit.enqueue_job(
         update_zip, [dataset_id],
-        title=u'DownloadAll {} "{}" {}'.format(operation, dataset_name,
-                                               dataset_id),
+        title='DownloadAll {} "{}" {}'.format(operation, dataset_name, dataset_id),
         queue=queue)
