@@ -291,7 +291,7 @@ def download_resource_into_zip(url, filename, zipf):
     size = 0
     # Create a ZipInfo object for setting the file's modified date
     zip_info = zipfile.ZipInfo(filename)
-    # Set the modified date 
+    # Set the modified date
     zip_info.date_time = datetime.datetime.now().timetuple()[:6]
     zip_info.compress_type = zipfile.ZIP_DEFLATED
     try:
