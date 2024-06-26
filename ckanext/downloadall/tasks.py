@@ -267,7 +267,7 @@ def save_local_path_in_datapackage_resource(datapackage_resource, res,
 
 def download_resource_into_zip(url, filename, zipf):
     try:
-        r = requests.get(url, stream=True)
+        r = requests.get(url, stream=True, timeout=300)
         r.raise_for_status()
     except requests.ConnectionError:
         log.error('URL {url} refused connection. The resource will not'
