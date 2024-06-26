@@ -5,6 +5,7 @@ import hashlib
 import math
 import copy
 import logging
+import datetime
 
 import requests
 import six
@@ -288,9 +289,14 @@ def download_resource_into_zip(url, filename, zipf):
 
     hash_object = hashlib.sha224()
     size = 0
+    # Create a ZipInfo object for setting the file's modified date
+    zip_info = zipfile.ZipInfo(filename)
+    # Set the modified date 
+    zip_info.date_time = datetime.datetime.now().timetuple()[:6]
+    zip_info.compress_type = zipfile.ZIP_DEFLATED
     try:
         # python3 syntax - stream straight into the zip
-        with zipf.open(filename, 'w') as zf:
+        with zipf.open(zip_info, 'w') as zf:
             for chunk in r.iter_content(chunk_size=128):
                 zf.write(chunk)
                 hash_object.update(chunk)
