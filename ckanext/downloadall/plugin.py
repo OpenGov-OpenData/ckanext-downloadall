@@ -131,4 +131,4 @@ def enqueue_update_zip(dataset_name, dataset_id, operation):
         update_zip, [dataset_id],
         title='DownloadAll {} "{}" {}'.format(operation, dataset_name, dataset_id),
         queue=queue,
-        timeout=300)
+        rq_kwargs={"timeout": 300})
