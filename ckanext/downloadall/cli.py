@@ -38,7 +38,8 @@ def update_zip(dataset_ref, synchronous, force):
             title='DownloadAll {operation} "{name}" {id}'.format(
                 operation='cli-requested', name=dataset_ref,
                 id=dataset_ref),
-            queue=DEFAULT_QUEUE_NAME)
+            queue=DEFAULT_QUEUE_NAME,
+            rq_kwargs={"timeout": 1800})
     click.secho('update-zip: SUCCESS', fg='green', bold=True)
 
 
@@ -70,6 +71,7 @@ def update_all_zips(synchronous, force):
                 title='DownloadAll {operation} "{name}" {id}'.format(
                     operation='cli-requested', name=dataset_name,
                     id=dataset_name),
-                queue=DEFAULT_QUEUE_NAME)
+                queue=DEFAULT_QUEUE_NAME,
+                rq_kwargs={"timeout": 1800})
 
     click.secho('update-all-zips: SUCCESS', fg='green', bold=True)
