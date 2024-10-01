@@ -65,7 +65,7 @@ jobs:
     - name: Run tests
       run: pytest --ckan-ini=test.ini --cov=ckanext.downloadall --cov-fail-under=80 --disable-warnings -vvv ckanext/downloadall/tests
     - name: Install Java
-      run: sudo apt-get install -y openjdk-11-jre
+      run: sudo apt install -y openjdk-17-jre
     - name: Install SonarQube Scanner
       run: pip install pysonar-scanner
     - name: Run SonarQube analysis
