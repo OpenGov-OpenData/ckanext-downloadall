@@ -68,7 +68,7 @@ jobs:
       run: pip install pysonar-scanner
     - name: Run SonarQube analysis
       run: |
-        pysonar-scanner \
+        sudo pysonar-scanner \
           -Dsonar.projectKey='ckanext-downloadall' \
           -Dsonar.sources=. \
           -Dsonar.application='open-data' \
