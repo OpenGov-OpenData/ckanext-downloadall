@@ -63,14 +63,15 @@ jobs:
       run: |
         ckan -c test.ini db init
     - name: Run tests
-      run: pytest --ckan-ini=test.ini --cov=ckanext.downloadall --cov-fail-under=80 --disable-warnings -vvv ckanext/downloadall/tests
-    - name: Install SonarQube Scanner
-      run: pip install pysonar-scanner
-    - name: Run SonarQube analysis
-      run: |
-        sudo pysonar-scanner \
-          -Dsonar.projectKey='ckanext-downloadall' \
-          -Dsonar.sources=. \
-          -Dsonar.application='open-data' \
-          -Dsonar.host.url=${{ secrets.SONAR_EXTERNAL_URL }} \
-          -Dsonar.login=${{ secrets.SONAR_API_TOKEN }}
+      run: pytest --ckan-ini=test.ini --cov=ckanext.downloadall --cov-report xml:coverage.xml --cov-fail-under=80 --disable-warnings -vvv ckanext/downloadall/tests
+    - name: SonarQube Scan
+      uses: sonarsource/sonarqube-scan-action@master
+      with: 
+        args: >
+          -Dsonar.application='open-data'
+          -Dsonar.tests=ckanext/downloadall/tests/
+          -Dsonar.python.coverage.reportPaths=coverage.xml
+          -Dsonar.verbose=true
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_API_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_EXTERNAL_URL }}
