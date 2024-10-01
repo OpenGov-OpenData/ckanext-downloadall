@@ -64,9 +64,10 @@ jobs:
         ckan -c test.ini db init
     - name: Run tests
       run: pytest --ckan-ini=test.ini --cov=ckanext.downloadall --cov-fail-under=80 --disable-warnings -vvv ckanext/downloadall/tests
+    - name: Install Java
+      run: sudo apt-get install -y openjdk-11-jre
     - name: Install SonarQube Scanner
-      run: |
-        pip install pysonar-scanner
+      run: pip install pysonar-scanner
     - name: Run SonarQube analysis
       run: |
         pysonar-scanner \
