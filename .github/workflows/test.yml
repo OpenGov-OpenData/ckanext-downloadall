@@ -71,6 +71,7 @@ jobs:
           -Dsonar.projectKey=ckanext-downloadall
           -Dsonar.sources=ckanext/downloadall
           -Dsonar.tests=ckanext/downloadall/tests/
+          -Dsonar.exclusions=ckanext/downloadall/tests/**
           -Dsonar.python.coverage.reportPaths=coverage.xml
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_API_TOKEN }}
