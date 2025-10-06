@@ -6,14 +6,14 @@ from ckanext.downloadall.tests import TestBase
 
 class TestNotify(TestBase):
     def test_new_resource_leads_to_queued_task(self):
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[
-            {'url': 'http://some.image.png', 'format': 'png'}])
+        dataset = factories.Dataset(resources=[
+            {'url': 'https://example.com/data.csv', 'format': 'csv'}])
         assert [job['title'] for job in helpers.call_action('job_list')] == [
             'DownloadAll new "{}" {}'.format(dataset['name'], dataset['id'])]
 
     def test_changed_resource_leads_to_queued_task(self):
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[
-            {'url': 'http://some.image.png', 'format': 'png'}])
+        dataset = factories.Dataset(resources=[
+            {'url': 'https://example.com/data.csv', 'format': 'csv'}])
         helpers.call_action('job_clear')
 
         dataset['resources'][0]['url'] = 'http://another.image.png'
@@ -23,8 +23,8 @@ class TestNotify(TestBase):
             'DownloadAll changed "{}" {}'.format(dataset['name'], dataset['id'])]
 
     def test_deleted_resource_leads_to_queued_task(self):
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[
-            {'url': 'http://some.image.png', 'format': 'png'}])
+        dataset = factories.Dataset(resources=[
+            {'url': 'https://example.com/data.csv', 'format': 'csv'}])
         helpers.call_action('job_clear')
 
         dataset['resources'] = []
@@ -39,7 +39,7 @@ class TestNotify(TestBase):
                    'title': 'Test Dataset',
                    'notes': 'Just another test dataset.',
                    'resources': [
-                        {'url': 'http://some.image.png', 'format': 'png'}
+                        {'url': 'https://example.com/data.csv', 'format': 'csv'}
                    ]}
         dataset = helpers.call_action('package_create', **dataset)
         # this should prompt datapackage.json to be updated
@@ -48,8 +48,8 @@ class TestNotify(TestBase):
             'DownloadAll new "{}" {}'.format(dataset['name'], dataset['id'])]
 
     def test_changed_dataset_leads_to_queued_task(self):
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[
-            {'url': 'http://some.image.png', 'format': 'png'}])
+        dataset = factories.Dataset(resources=[
+            {'url': 'https://example.com/data.csv', 'format': 'csv'}])
         helpers.call_action('job_clear')
 
         dataset['notes'] = 'Changed description'
@@ -62,8 +62,8 @@ class TestNotify(TestBase):
     def test_creation_of_zip_resource_leads_to_queued_task(self):
         # but we don't get an infinite loop because it is stopped by the
         # skip_if_no_changes
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[
-            {'url': 'http://some.image.png', 'format': 'png'}])
+        dataset = factories.Dataset(resources=[
+            {'url': 'https://example.com/data.csv', 'format': 'csv'}])
         helpers.call_action('job_clear')
         resource = {
             'package_id': dataset['id'],

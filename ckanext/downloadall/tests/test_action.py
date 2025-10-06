@@ -10,8 +10,7 @@ from ckanext.downloadall.tests import TestBase
 class TestDatastoreCreate(TestBase):
     def test_datastore_create(self):
         dataset = factories.Dataset(
-            owner_org=self.org['id'],
-            resources=[{'url': 'http://some.image.png', 'format': 'png'}])
+            resources=[{'url': 'https://example.com/data.csv', 'format': 'csv'}])
         helpers.call_action('job_clear')
 
         helpers.call_action('datastore_create',

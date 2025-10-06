@@ -57,7 +57,7 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
+        dataset = factories.Dataset(resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -99,7 +99,7 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
+        dataset = factories.Dataset(resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -123,7 +123,7 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
+        dataset = factories.Dataset(resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -144,7 +144,7 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
+        dataset = factories.Dataset(resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -164,7 +164,7 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
+        dataset = factories.Dataset(resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -186,7 +186,7 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
+        dataset = factories.Dataset(resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -266,7 +266,7 @@ class TestUpdateZip(TestBase):
             body='Date,Price\n1/6/2017,4.00\n2/6/2017,4.12'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
+        dataset = factories.Dataset(resources=[{
             'url': 'https://example.com/data.csv',
             'format': 'csv',
             }])
@@ -302,7 +302,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body=requests.ConnectionError('Some network trouble...')
         )
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
+        dataset = factories.Dataset(resources=[{
             'url': 'https://example.com/data.csv',
             'name': 'rainfall',
             'format': 'csv',
@@ -340,7 +340,7 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             status=404
         )
-        dataset = factories.Dataset(owner_org=self.org['id'], resources=[{
+        dataset = factories.Dataset(resources=[{
             'url': 'https://example.com/data.csv',
             'name': 'rainfall',
             'format': 'csv',
@@ -368,6 +368,39 @@ class TestUpdateZip(TestBase):
                     'path': 'https://example.com/data.csv',
                     'title': 'rainfall',
                     }]
+
+    @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
+    @responses.activate
+    def test_resource_with_no_format(self, _):
+        responses.add(
+            responses.GET,
+            'https://example.com/data.csv',
+            body='a,b,c'
+        )
+        responses.add_passthru(config['solr_url'])
+        dataset = factories.Dataset(resources=[{
+            'name': 'Rainfall',
+            'url': 'https://example.com/data.csv'
+            # No format specified
+            }])
+
+        update_zip(dataset['id'])
+
+        dataset = helpers.call_action('package_show', id=dataset['id'])
+        zip_resources = [res for res in dataset['resources']
+                         if res['name'] == 'All resource data']
+        zip_resource = zip_resources[0]
+        uploader = ckan.lib.uploader.get_resource_uploader(zip_resource)
+        filepath = uploader.get_path(zip_resource['id'])
+        csv_filename_in_zip = '{}.csv'.format(dataset['resources'][0]['id'])
+        with fake_open(filepath, 'rb') as f:
+            with zipfile.ZipFile(f) as zip_:
+                assert zip_.namelist() == [csv_filename_in_zip, 'datapackage.json']
+                datapackage_json = zip_.read('datapackage.json').decode()
+                assert datapackage_json.startswith('{\n  "description"')
+                datapackage = json.loads(datapackage_json)
+                assert datapackage['resources'][0]['name'] == 'rainfall'
+                assert datapackage['resources'][0]['title'] == 'Rainfall'
 
 
 local_datapackage = {
