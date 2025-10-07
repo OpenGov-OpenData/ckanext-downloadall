@@ -209,7 +209,7 @@ class TestUpdateZip(TestBase):
             re.compile(r'http://test.ckan.net/dataset/.*/download/.*'),
             body=csv_content
         )
-        dataset = factories.Dataset(owner_org=self.org['id'])
+        dataset = factories.Dataset()
         # add a resource which is an uploaded file
         with tempfile.NamedTemporaryFile() as fp:
             fp.write(csv_content.encode())
@@ -392,10 +392,9 @@ class TestUpdateZip(TestBase):
         zip_resource = zip_resources[0]
         uploader = ckan.lib.uploader.get_resource_uploader(zip_resource)
         filepath = uploader.get_path(zip_resource['id'])
-        csv_filename_in_zip = '{}.csv'.format(dataset['resources'][0]['id'])
         with fake_open(filepath, 'rb') as f:
             with zipfile.ZipFile(f) as zip_:
-                assert zip_.namelist() == [csv_filename_in_zip, 'datapackage.json']
+                assert zip_.namelist() == ['rainfall.csv', 'datapackage.json']
                 datapackage_json = zip_.read('datapackage.json').decode()
                 assert datapackage_json.startswith('{\n  "description"')
                 datapackage = json.loads(datapackage_json)
@@ -548,7 +547,6 @@ class TestHashDataPackage(object):
 class TestGenerateDatapackageJson(TestBase):
     def test_simple(self):
         dataset = factories.Dataset(
-            owner_org=self.org['id'],
             resources=[{
                 'url': 'https://example.com/data.csv',
                 'format': 'csv',
@@ -577,7 +575,7 @@ class TestGenerateDatapackageJson(TestBase):
 
     def test_extras(self):
         dataset = factories.Dataset(
-            owner_org=self.org['id'], extras=[
+            extras=[
                 {'key': 'extra1', 'value': '1'},
                 {'key': 'extra2', 'value': '2'},
                 {'key': 'extra3', 'value': '3'},
@@ -598,7 +596,7 @@ class TestGenerateDatapackageJson(TestBase):
         'ckanext.downloadall.dataset_fields_to_add_to_datapackage',
         'num_resources type')
     def test_added_fields(self):
-        dataset = factories.Dataset(owner_org=self.org['id'])
+        dataset = factories.Dataset()
 
         datapackage, _, __ = \
             generate_datapackage_json(dataset['id'])
