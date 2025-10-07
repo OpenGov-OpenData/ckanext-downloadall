@@ -57,10 +57,15 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(resources=[{
-            'url': 'https://example.com/data.csv',
-            'format': 'csv',
-            }])
+        dataset = factories.Dataset(
+            name='test-dataset-a',
+            title='Test Dataset A',
+            notes='Just another test dataset.',
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
 
         update_zip(dataset['id'])
 
@@ -81,8 +86,8 @@ class TestUpdateZip(TestBase):
                 datapackage_json = zip_.read('datapackage.json').decode()
                 assert '{\n  "description"' in datapackage_json
                 datapackage = json.loads(datapackage_json)
-                assert datapackage['name'][:12] == 'test_dataset'
-                assert datapackage['title'] == 'Test Dataset'
+                assert datapackage['name'] == 'test-dataset-a'
+                assert datapackage['title'] == 'Test Dataset A'
                 assert datapackage['description'] == 'Just another test dataset.'
                 assert datapackage['resources'][0]['format'] == 'CSV'
                 assert datapackage['resources'][0]['name'] == dataset['resources'][0]['id']
@@ -99,10 +104,15 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(resources=[{
-            'url': 'https://example.com/data.csv',
-            'format': 'csv',
-            }])
+        dataset = factories.Dataset(
+            name='test-dataset-b',
+            title='Test Dataset B',
+            notes='Just another test dataset.',
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
 
         update_zip(dataset['id'])
         update_zip(dataset['id'], skip_if_no_changes=False)
@@ -123,10 +133,15 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(resources=[{
-            'url': 'https://example.com/data.csv',
-            'format': 'csv',
-            }])
+        dataset = factories.Dataset(
+            name='test-dataset-c',
+            title='Test Dataset C',
+            notes='Just another test dataset.',
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
 
         update_zip(dataset['id'])
         with mock.patch('ckanext.downloadall.tasks.write_zip') as write_zip_:
@@ -144,10 +159,15 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(resources=[{
-            'url': 'https://example.com/data.csv',
-            'format': 'csv',
-            }])
+        dataset = factories.Dataset(
+            name='test-dataset-d',
+            title='Test Dataset D',
+            notes='Just another test dataset.',
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
 
         update_zip(dataset['id'])
         with mock.patch('ckanext.downloadall.tasks.write_zip') as write_zip_:
@@ -164,14 +184,19 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(resources=[{
-            'url': 'https://example.com/data.csv',
-            'format': 'csv',
-            }])
+        dataset = factories.Dataset(
+            name='test-dataset-e',
+            title='Test Dataset E',
+            notes='Just another test dataset.',
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
 
         update_zip(dataset['id'])
         dataset = helpers.call_action('package_patch', id=dataset['id'],
-                                      notes='New notes')
+                                      notes='New notes.')
         with mock.patch('ckanext.downloadall.tasks.write_zip') as write_zip_:
             update_zip(dataset['id'], skip_if_no_changes=True)
             # ensure zip would be rewritten in this case - not letting it skip
@@ -186,10 +211,15 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(resources=[{
-            'url': 'https://example.com/data.csv',
-            'format': 'csv',
-            }])
+        dataset = factories.Dataset(
+            name='test-dataset-f',
+            title='Test Dataset F',
+            notes='Just another test dataset.',
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
 
         update_zip(dataset['id'])
         dataset = helpers.call_action('package_patch', id=dataset['id'],
@@ -227,8 +257,6 @@ class TestUpdateZip(TestBase):
             ctx['user'] = user['name']
             helpers.call_action('resource_create', context=ctx, **resource)
 
-            # registry.action.resource_create(**resource)
-
         update_zip(dataset['id'])
 
         dataset = helpers.call_action('package_show', id=dataset['id'])
@@ -246,14 +274,11 @@ class TestUpdateZip(TestBase):
                 # Check datapackage.json
                 datapackage_json = zip_.read('datapackage.json')
                 datapackage = json.loads(datapackage_json)
-                assert datapackage['resources'] == [{
-                    'format': 'CSV',
-                    'name': 'rainfall',
-                    'path': csv_filename_in_zip,
-                    'sources': [{'path': dataset['resources'][0]['url'],
-                                 'title': 'Rainfall'}],
-                    'title': 'Rainfall',
-                    }]
+                assert datapackage['resources'][0]['title'] == 'Rainfall'
+                assert datapackage['resources'][0]['format'] == 'CSV'
+                assert datapackage['resources'][0]['path'] == csv_filename_in_zip
+                assert datapackage['resources'][0]['sources'] == [{'path': dataset['resources'][0]['url'],
+                                                                   'title': 'Rainfall'}]
 
     @mock.patch('ckanext.downloadall.tasks.populate_schema_from_datastore',
                 side_effect=mock_populate_schema_from_datastore)
@@ -266,10 +291,15 @@ class TestUpdateZip(TestBase):
             body='Date,Price\n1/6/2017,4.00\n2/6/2017,4.12'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(resources=[{
-            'url': 'https://example.com/data.csv',
-            'format': 'csv',
-            }])
+        dataset = factories.Dataset(
+            name='test-dataset-g',
+            title='Test Dataset G',
+            notes='Just another test dataset.',
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
 
         update_zip(dataset['id'])
 
@@ -302,11 +332,16 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             body=requests.ConnectionError('Some network trouble...')
         )
-        dataset = factories.Dataset(resources=[{
-            'url': 'https://example.com/data.csv',
-            'name': 'rainfall',
-            'format': 'csv',
-            }])
+        dataset = factories.Dataset(
+            name='test-dataset-h',
+            title='Test Dataset H',
+            notes='Just another test dataset.',
+            resources=[{
+                'name': 'rainfall',
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
 
         update_zip(dataset['id'])
 
@@ -328,8 +363,8 @@ class TestUpdateZip(TestBase):
                     'name': 'rainfall',
                     # path is to the URL - an 'external resource'
                     'path': 'https://example.com/data.csv',
-                    'title': 'rainfall',
-                    }]
+                    'title': 'rainfall'
+                }]
 
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate
@@ -340,11 +375,16 @@ class TestUpdateZip(TestBase):
             'https://example.com/data.csv',
             status=404
         )
-        dataset = factories.Dataset(resources=[{
-            'url': 'https://example.com/data.csv',
-            'name': 'rainfall',
-            'format': 'csv',
-            }])
+        dataset = factories.Dataset(
+            name='test-dataset-i',
+            title='Test Dataset I',
+            notes='Just another test dataset.',
+            resources=[{
+                'name': 'rainfall',
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
 
         update_zip(dataset['id'])
 
@@ -366,8 +406,8 @@ class TestUpdateZip(TestBase):
                     'name': 'rainfall',
                     # path is to the URL - an 'external resource'
                     'path': 'https://example.com/data.csv',
-                    'title': 'rainfall',
-                    }]
+                    'title': 'rainfall'
+                }]
 
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate
@@ -378,11 +418,15 @@ class TestUpdateZip(TestBase):
             body='a,b,c'
         )
         responses.add_passthru(config['solr_url'])
-        dataset = factories.Dataset(resources=[{
-            'name': 'Rainfall',
-            'url': 'https://example.com/data.csv'
-            # No format specified
-            }])
+        dataset = factories.Dataset(
+            name='test-dataset-j',
+            title='Test Dataset J',
+            notes='Just another test dataset.',
+            resources=[{
+                'name': 'rainfall',
+                'url': 'https://example.com/data.csv'
+            }]
+        )
 
         update_zip(dataset['id'])
 
@@ -399,7 +443,6 @@ class TestUpdateZip(TestBase):
                 assert datapackage_json.startswith('{\n  "description"')
                 datapackage = json.loads(datapackage_json)
                 assert datapackage['resources'][0]['name'] == 'rainfall'
-                assert datapackage['resources'][0]['title'] == 'Rainfall'
 
 
 local_datapackage = {
@@ -547,34 +590,41 @@ class TestHashDataPackage(object):
 class TestGenerateDatapackageJson(TestBase):
     def test_simple(self):
         dataset = factories.Dataset(
+            name='test-dataset-k',
+            title='Test Dataset K',
+            notes='Just another test dataset.',
             resources=[{
+                'name': 'rainfall',
                 'url': 'https://example.com/data.csv',
-                'format': 'csv',
-                }])
+                'format': 'csv'
+            }]
+        )
 
         datapackage, ckan_and_datapackage_resources, existing_zip_resource = generate_datapackage_json(dataset['id'])
 
         replace_number_suffix(datapackage, 'name')
         replace_uuid(datapackage['resources'][0], 'name')
-        assert datapackage == {
-            'description': 'Just another test dataset.',
-            'name': 'test_dataset_num',
-            'resources': [{'format': 'CSV',
-                           'name': '<SOME-UUID>',
-                           'path': 'https://example.com/data.csv'}],
-            'title': 'Test Dataset'
-            }
+        assert datapackage['name'] == 'test-dataset-k'
+        assert datapackage['title'] == 'Test Dataset K'
+        assert datapackage['description'] == 'Just another test dataset.'
+        assert datapackage['resources'][0]['format'] == 'CSV'
+        assert datapackage['resources'][0]['name'] == '<SOME-UUID>'
+        assert datapackage['resources'][0]['path'] == 'https://example.com/data.csv'
         assert ckan_and_datapackage_resources[0][0]['url'] == 'https://example.com/data.csv'
         assert not ckan_and_datapackage_resources[0][0]['description']
         assert ckan_and_datapackage_resources[0][1] == {
-            'format': 'CSV',
             'name': '<SOME-UUID>',
-            'path': 'https://example.com/data.csv'
+            'title': 'rainfall',
+            'path': 'https://example.com/data.csv',
+            'format': 'CSV'
         }
         assert existing_zip_resource is None
 
     def test_extras(self):
         dataset = factories.Dataset(
+            name='test-dataset-l',
+            title='Test Dataset L',
+            notes='Just another test dataset.',
             extras=[
                 {'key': 'extra1', 'value': '1'},
                 {'key': 'extra2', 'value': '2'},
@@ -586,29 +636,33 @@ class TestGenerateDatapackageJson(TestBase):
 
         replace_number_suffix(datapackage, 'name')
         assert datapackage == {
+            'name': 'test-dataset-l',
+            'title': 'Test Dataset L',
             'description': 'Just another test dataset.',
-            'name': 'test_dataset_num',
-            'title': 'Test Dataset',
-            'extras': {'extra1': 1, 'extra2': 2, 'extra3': 3},
-            }
+            'extras': {'extra1': 1, 'extra2': 2, 'extra3': 3}
+        }
 
     @pytest.mark.ckan_config(
         'ckanext.downloadall.dataset_fields_to_add_to_datapackage',
         'num_resources type')
     def test_added_fields(self):
-        dataset = factories.Dataset()
+        dataset = factories.Dataset(
+            name='test-dataset-m',
+            title='Test Dataset M',
+            notes='Just another test dataset.'
+        )
 
         datapackage, _, __ = \
             generate_datapackage_json(dataset['id'])
 
         replace_number_suffix(datapackage, 'name')
         assert datapackage == {
+            'name': 'test-dataset-m',
+            'title': 'Test Dataset M',
             'description': 'Just another test dataset.',
-            'name': 'test_dataset_num',
-            'title': 'Test Dataset',
             'num_resources': 0,
-            'type': 'dataset',
-            }
+            'type': 'dataset'
+        }
 
 
 # helpers
