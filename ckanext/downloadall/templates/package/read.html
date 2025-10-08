@@ -1,5 +1,10 @@
 {% ckan_extends %}
 
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" href="/css/downloadall.css" />
+{% endblock %}
+
 {% block package_resources %}
 
   {% if pkg.resources %}
@@ -7,9 +12,9 @@
 
       {% set zip_res = h.downloadall__pop_zip_resource(pkg) %}
       {% if zip_res %}
-        <a class="btn btn-primary resource-url-analytics resource-type-{{ zip_res.resource_type }}" href="{{ zip_res.url }}">
+        <a class="btn btn-primary downloadall-enabled resource-url-analytics resource-type-{{ zip_res.resource_type }}" href="{{ zip_res.url }}">
       {% else %}
-        <a class="btn btn-primary" disabled="disabled" title="{{ _('This download is not currently available') }}" href="#">
+        <a class="btn btn-primary downloadall-disabled" disabled="disabled" title="{{ _('This download is not currently available') }}" href="#">
       {% endif %}
           <i class="fa fa-arrow-circle-o-down"></i> {{ _('Download all') }}
         </a>

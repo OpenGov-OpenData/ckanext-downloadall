@@ -1,3 +1,6 @@
 responses==0.10.6
 flake8
-pytest
+mock
+pyfakefs
+pytest-ckan
+pytest-cov
