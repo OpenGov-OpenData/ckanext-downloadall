@@ -231,7 +231,10 @@ def write_zip(fp, datapackage, ckan_and_datapackage_resources):
 
             log.debug('Downloading resource {}/{}: {}'
                       .format(i, len(ckan_and_datapackage_resources), res['url']))
-            filename = ckanapi.datapackage.resource_filename(dres)
+            try:
+                filename = ckanapi.datapackage.resource_filename(dres)
+            except KeyError:
+                filename = dres['name']
             try:
                 download_resource_into_zip(res['url'], filename, zipf)
             except DownloadError:
