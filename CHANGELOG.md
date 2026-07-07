@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- Config option added: ckanext.downloadall.include_data_dictionary to optionally include a data dictionary CSV for each resource that has datastore data in the generated zip.
+
 ## [0.1.0] - 2019-11-12
 
 ### Added

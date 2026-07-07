@@ -42,6 +42,15 @@ def mock_populate_schema_from_datastore(res, datapackage_res):
     populate_schema_from_datastore(res, datapackage_res)
 
 
+def mock_populate_schema_from_datastore_with_info(res, datapackage_res):
+    res['datastore_fields'] = [
+        {'type': 'int', 'id': '_id'},
+        {'type': 'text', 'id': 'Date',
+         'info': {'label': 'The date', 'notes': 'When it was measured'}},
+        {'type': 'text', 'id': 'Price'}]
+    populate_schema_from_datastore(res, datapackage_res)
+
+
 @pytest.mark.ckan_config('ckan.plugins', 'datastore downloadall')
 @mock.patch.object(ckan.lib.uploader, 'os', fake_os)
 @mock.patch.object(builtins, 'open', side_effect=mock_open_if_open_fails)
@@ -322,6 +331,121 @@ class TestUpdateZip(TestBase):
                 assert datapackage['resources'][0]['schema'] == {
                     'fields': [{'type': 'string', 'name': 'Date'},
                                {'type': 'string', 'name': 'Price'}]}
+
+    @mock.patch('ckanext.downloadall.tasks.populate_schema_from_datastore',
+                side_effect=mock_populate_schema_from_datastore_with_info)
+    @pytest.mark.ckan_config('ckanext.downloadall.include_data_dictionary',
+                             True)
+    @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
+    @responses.activate
+    def test_include_data_dictionary(self, _, __):
+        responses.add(
+            responses.GET,
+            'https://example.com/data.csv',
+            body='Date,Price\n1/6/2017,4.00\n2/6/2017,4.12'
+        )
+        responses.add_passthru(config['solr_url'])
+        dataset = factories.Dataset(
+            name='test-dataset-dd-on',
+            title='Test Dataset DD On',
+            notes='Just another test dataset.',
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
+
+        update_zip(dataset['id'])
+
+        dataset = helpers.call_action('package_show', id=dataset['id'])
+        zip_resources = [res for res in dataset['resources']
+                         if res['name'] == 'All resource data']
+        zip_resource = zip_resources[0]
+        uploader = ckan.lib.uploader.get_resource_uploader(zip_resource)
+        filepath = uploader.get_path(zip_resource['id'])
+        resource_id = dataset['resources'][0]['id']
+        csv_filename_in_zip = '{}.csv'.format(resource_id)
+        dd_filename_in_zip = '{}-data-dictionary.csv'.format(resource_id)
+        with fake_open(filepath, 'rb') as f:
+            with zipfile.ZipFile(f) as zip_:
+                assert dd_filename_in_zip in zip_.namelist()
+                dd = zip_.read(dd_filename_in_zip).decode()
+                lines = dd.splitlines()
+                assert lines[0] == 'column,type,label,description'
+                # _id is skipped; Date has label/notes, Price does not
+                assert lines[1] == 'Date,text,The date,When it was measured'
+                assert lines[2] == 'Price,text,,'
+                assert len(lines) == 3
+
+    @mock.patch('ckanext.downloadall.tasks.populate_schema_from_datastore',
+                side_effect=mock_populate_schema_from_datastore_with_info)
+    @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
+    @responses.activate
+    def test_data_dictionary_not_included_by_default(self, _, __):
+        responses.add(
+            responses.GET,
+            'https://example.com/data.csv',
+            body='Date,Price\n1/6/2017,4.00\n2/6/2017,4.12'
+        )
+        responses.add_passthru(config['solr_url'])
+        dataset = factories.Dataset(
+            name='test-dataset-dd-off',
+            title='Test Dataset DD Off',
+            notes='Just another test dataset.',
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
+
+        update_zip(dataset['id'])
+
+        dataset = helpers.call_action('package_show', id=dataset['id'])
+        zip_resources = [res for res in dataset['resources']
+                         if res['name'] == 'All resource data']
+        zip_resource = zip_resources[0]
+        uploader = ckan.lib.uploader.get_resource_uploader(zip_resource)
+        filepath = uploader.get_path(zip_resource['id'])
+        with fake_open(filepath, 'rb') as f:
+            with zipfile.ZipFile(f) as zip_:
+                assert not any(name.endswith('-data-dictionary.csv')
+                               for name in zip_.namelist())
+
+    @pytest.mark.ckan_config('ckanext.downloadall.include_data_dictionary',
+                             True)
+    @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
+    @responses.activate
+    def test_data_dictionary_skipped_without_datastore_data(self, _):
+        # Resource has no datastore data, so no data dictionary is written even
+        # when the option is enabled.
+        responses.add(
+            responses.GET,
+            'https://example.com/data.csv',
+            body='a,b,c'
+        )
+        responses.add_passthru(config['solr_url'])
+        dataset = factories.Dataset(
+            name='test-dataset-dd-nods',
+            title='Test Dataset DD No Datastore',
+            notes='Just another test dataset.',
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
+
+        update_zip(dataset['id'])
+
+        dataset = helpers.call_action('package_show', id=dataset['id'])
+        zip_resources = [res for res in dataset['resources']
+                         if res['name'] == 'All resource data']
+        zip_resource = zip_resources[0]
+        uploader = ckan.lib.uploader.get_resource_uploader(zip_resource)
+        filepath = uploader.get_path(zip_resource['id'])
+        with fake_open(filepath, 'rb') as f:
+            with zipfile.ZipFile(f) as zip_:
+                assert not any(name.endswith('-data-dictionary.csv')
+                               for name in zip_.namelist())
 
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate

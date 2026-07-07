@@ -126,6 +126,13 @@ Config Settings
     # (optional, space separated list).
     ckanext.downloadall.dataset_fields_to_add_to_datapackage = district county
 
+    # Include a data dictionary CSV for each resource that has data in the
+    # datastore. Each file is named "{resource_filename}-data-dictionary.csv"
+    # and describes the columns (column, type, label, description). Resources
+    # without datastore data are skipped.
+    # (optional, default: false).
+    ckanext.downloadall.include_data_dictionary = true
+
 
 ----------------------
 Command-line interface

@@ -1,6 +1,8 @@
 import tempfile
 import zipfile
 import os
+import io
+import csv
 import hashlib
 import math
 import copy
@@ -14,7 +16,7 @@ import ckanapi.datapackage
 
 from ckan import model
 from ckan.plugins import toolkit
-from ckan.plugins.toolkit import get_action, config
+from ckan.plugins.toolkit import get_action, config, asbool
 from werkzeug.datastructures import FileStorage
 
 log = logging.getLogger(__name__)
@@ -224,6 +226,8 @@ def write_zip(fp, datapackage, ckan_and_datapackage_resources):
 
     :param fp: Open file that the zip can be written to
     '''
+    include_dd = asbool(
+        config.get('ckanext.downloadall.include_data_dictionary', False))
     with zipfile.ZipFile(fp, 'w', zipfile.ZIP_DEFLATED, allowZip64=True) as zipf:
         i = 0
         for res, dres in ckan_and_datapackage_resources:
@@ -235,6 +239,17 @@ def write_zip(fp, datapackage, ckan_and_datapackage_resources):
                 filename = ckanapi.datapackage.resource_filename(dres)
             except KeyError:
                 filename = dres['name']
+
+            # Optionally add a data dictionary CSV for resources with datastore
+            # data. Done independently of the resource download so a failed or
+            # remote resource download does not suppress its data dictionary.
+            if include_dd and res.get('datastore_fields'):
+                try:
+                    write_data_dictionary_csv(res, filename, zipf)
+                except Exception:
+                    log.exception('Failed to write data dictionary for %s',
+                                  res.get('id'))
+
             try:
                 download_resource_into_zip(res['url'], filename, zipf)
             except DownloadError:
@@ -325,6 +340,35 @@ def write_datapackage_json(datapackage, zipf):
         json_file.flush()
         zipf.write(json_file.name, arcname='datapackage.json')
         log.debug('Added datapackage.json from {}'.format(json_file.name))
+
+
+def data_dictionary_filename(resource_filename):
+    '''Derive the data dictionary filename from a resource's in-zip filename,
+    stripping the extension. e.g. 'data.csv' -> 'data-data-dictionary.csv'.
+    '''
+    base = os.path.splitext(resource_filename)[0]
+    return '{}-data-dictionary.csv'.format(base)
+
+
+def write_data_dictionary_csv(res, filename, zipf):
+    '''Write a data dictionary CSV into the zip, describing the columns of a
+    resource's datastore data. Uses the datastore fields already fetched in
+    generate_datapackage_json (res['datastore_fields']).
+    '''
+    header = ['column', 'type', 'label', 'description']
+    buffer = io.StringIO()
+    wr = csv.writer(buffer)
+    wr.writerow(header)
+    for field in res['datastore_fields']:
+        if field['id'].startswith('_'):
+            continue
+        info = field.get('info') or {}
+        wr.writerow([field['id'], field['type'],
+                     info.get('label', ''), info.get('notes', '')])
+
+    dd_filename = data_dictionary_filename(filename)
+    zipf.writestr(dd_filename, buffer.getvalue())
+    log.debug('Added data dictionary {}'.format(dd_filename))
 
 
 def format_bytes(size_bytes):
