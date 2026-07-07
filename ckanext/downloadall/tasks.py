@@ -360,7 +360,7 @@ def write_data_dictionary_csv(res, filename, zipf):
     wr = csv.writer(buffer)
     wr.writerow(header)
     for field in res['datastore_fields']:
-        if field['id'].startswith('_'):
+        if field['id'] == '_id':
             continue
         info = field.get('info') or {}
         wr.writerow([field['id'], field['type'],

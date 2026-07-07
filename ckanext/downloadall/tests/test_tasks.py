@@ -364,7 +364,6 @@ class TestUpdateZip(TestBase):
         uploader = ckan.lib.uploader.get_resource_uploader(zip_resource)
         filepath = uploader.get_path(zip_resource['id'])
         resource_id = dataset['resources'][0]['id']
-        csv_filename_in_zip = '{}.csv'.format(resource_id)
         dd_filename_in_zip = '{}-data-dictionary.csv'.format(resource_id)
         with fake_open(filepath, 'rb') as f:
             with zipfile.ZipFile(f) as zip_:
