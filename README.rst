@@ -133,6 +133,15 @@ Config Settings
     # (optional, default: false).
     ckanext.downloadall.include_data_dictionary = true
 
+After changing ``ckanext.downloadall.include_data_dictionary``, existing zips
+are not regenerated automatically - the change only affects the extra CSV
+files in the zip, not the ``datapackage.json`` that the "has it changed?"
+check compares. To apply the new setting to datasets that already have a zip,
+force a rebuild with the ``--force`` option of the command-line interface (see
+below)::
+
+    downloadall update-all-zips --force
+
 
 ----------------------
 Command-line interface
