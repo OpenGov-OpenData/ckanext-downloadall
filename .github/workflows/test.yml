@@ -63,9 +63,9 @@ jobs:
         pip install -e .
         # Replace default path to CKAN core config file with the one on the container
         sed -i -e 's/use = config:.*/use = config:\/srv\/app\/src\/ckan\/test-core.ini/' test.ini
-        # Install unzip for SonarQube Scan
+        # Install unzip and gnupg for SonarQube Scan
         apt-get update
-        apt-get install unzip -y
+        apt-get install -y unzip gnupg
     - name: Setup extension
       run: |
         ckan -c test.ini db init
@@ -73,7 +73,7 @@ jobs:
       run: pytest --ckan-ini=test.ini --cov=ckanext.downloadall --cov-report xml:coverage.xml --cov-fail-under=80 --disable-warnings -vvv ckanext/downloadall/tests
     - name: SonarQube Scan
       uses: sonarsource/sonarqube-scan-action@master
-      with: 
+      with:
         args: >
           -Dsonar.projectKey=ckanext-downloadall
           -Dsonar.sources=ckanext/downloadall
