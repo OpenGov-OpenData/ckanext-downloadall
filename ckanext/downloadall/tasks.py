@@ -240,22 +240,24 @@ def write_zip(fp, datapackage, ckan_and_datapackage_resources):
             except KeyError:
                 filename = dres['name']
 
-            # Optionally add a data dictionary CSV for resources with datastore
-            # data. Done independently of the resource download so a failed or
-            # remote resource download does not suppress its data dictionary.
-            if include_dd and res.get('datastore_fields'):
-                try:
-                    write_data_dictionary_csv(res, filename, zipf)
-                except Exception:
-                    log.exception('Failed to write data dictionary for %s',
-                                  res.get('id'))
-
             try:
                 download_resource_into_zip(res['url'], filename, zipf)
             except DownloadError:
                 # The dres['path'] is left as the url - i.e. an 'external
                 # resource' of the data package.
                 continue
+
+            # Optionally add a data dictionary CSV for resources with datastore
+            # data. Only after a successful download, so we never leave an
+            # orphaned data dictionary for a resource whose data file is absent.
+            if include_dd and res.get('datastore_fields'):
+                try:
+                    write_data_dictionary_csv(res, filename, zipf)
+                except Exception:
+                    # A data dictionary failure must never break the whole zip;
+                    # log.exception keeps the failure visible.
+                    log.exception('Failed to write data dictionary for %s',
+                                  res.get('id'))
 
             save_local_path_in_datapackage_resource(dres, res, filename)
 

@@ -446,6 +446,45 @@ class TestUpdateZip(TestBase):
                 assert not any(name.endswith('-data-dictionary.csv')
                                for name in zip_.namelist())
 
+    @mock.patch('ckanext.downloadall.tasks.populate_schema_from_datastore',
+                side_effect=mock_populate_schema_from_datastore_with_info)
+    @pytest.mark.ckan_config('ckanext.downloadall.include_data_dictionary',
+                             True)
+    @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
+    @responses.activate
+    def test_data_dictionary_skipped_when_download_fails(self, _, __):
+        # The resource has datastore data, but its download fails. No data
+        # dictionary should be left in the zip for a resource whose data file
+        # is absent.
+        responses.add_passthru(config['solr_url'])
+        responses.add(
+            responses.GET,
+            'https://example.com/data.csv',
+            body=requests.ConnectionError('Some network trouble...')
+        )
+        dataset = factories.Dataset(
+            name='test-dataset-dd-dlfail',
+            title='Test Dataset DD Download Fail',
+            notes='Just another test dataset.',
+            resources=[{
+                'url': 'https://example.com/data.csv',
+                'format': 'csv'
+            }]
+        )
+
+        update_zip(dataset['id'])
+
+        dataset = helpers.call_action('package_show', id=dataset['id'])
+        zip_resources = [res for res in dataset['resources']
+                         if res['name'] == 'All resource data']
+        zip_resource = zip_resources[0]
+        uploader = ckan.lib.uploader.get_resource_uploader(zip_resource)
+        filepath = uploader.get_path(zip_resource['id'])
+        with fake_open(filepath, 'rb') as f:
+            with zipfile.ZipFile(f) as zip_:
+                # Only datapackage.json - no data file and no data dictionary
+                assert zip_.namelist() == ['datapackage.json']
+
     @pytest.mark.ckan_config('ckan.storage_path', '/doesnt_exist')
     @responses.activate
     def test_resource_url_with_connection_error(self, _):
